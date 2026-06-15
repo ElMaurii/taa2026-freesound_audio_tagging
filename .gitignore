@@ -1,0 +1,48 @@
+# ==========================================
+# Archivos del Sistema / IDEs
+# ==========================================
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/
+.virtualenvs/
+.env
+venv/
+env/
+
+# ==========================================
+# Python e Intérpretes
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.elc
+.Python
+
+# ==========================================
+# DATOS Y AUDIO (Esencial para este proyecto)
+# ==========================================
+# Ignorar toda la carpeta de datos para evitar subir gigabytes de audios
+data/
+
+# Por seguridad adicional, bloquear formatos de audio y arreglos pesados
+*.wav
+*.mp3
+*.npy
+*.npz
+*.tfrecord
+*.csv
+
+# Excepción opcional: Si crean un CSV pequeño con los Folds de validación 
+# y quieren compartirlo por Git, pueden quitar el '#' de la siguiente línea:
+# !data/processed/train_with_folds.csv
+
+# ==========================================
+# MODELOS ENTRENADOS
+# ==========================================
+# Los pesos de redes neuronales pesan cientos de megas y no van en Git
+saved_models/
+*.h5
+*.keras
+*.ckpt
+*.pkl
+*.pickle
