@@ -1,1 +1,5 @@
 Archivos .ipynb para trabajar o bien localmente o con Google Colab
+notebooks/ 
+│   ├── 01_eda_validation.ipynb # Análisis exploratorio y partición de Folds (Uploader Stratification)
+│   ├── 02_audio_pipeline.ipynb # Pruebas visuales del espectrograma Log-Mel
+│   └── 03_model_training.ipynb # Experimentación y entrenamiento de arquitecturas (CNNs/RNNs)
