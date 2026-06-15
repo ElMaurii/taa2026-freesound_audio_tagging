@@ -1,0 +1,1 @@
+Espectrogramas precomputados (.npy, .tfrecord) - CONSIDERAR OPCION, pero creo que por ventaja computacional sera mejor trabajar con .tfrecord
