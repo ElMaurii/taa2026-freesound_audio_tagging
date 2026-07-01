@@ -78,8 +78,8 @@ def cargar_audio(path):
     tensor 1D float32 en [-1, 1]. No remuestrea (el dataset ya está a la frecuencia correcta).
     """    
     raw = tf.io.read_file(path)
-    wav, = tf.audio.decode_wav(raw, desired_channels=1) # (n_samples, 1)
-    return tf.squeeze(wav, axis=-1)  # (n_samples,)
+    audio, _ = tf.audio.decode_wav(raw, desired_channels=1) #  # audio:(n_samples,1), _:sample_rate
+    return tf.squeeze(audio, axis=-1)  # (n_samples,)
 
 def audio_a_logmel(wav):
     """Convierte una onda 1D en espectrograma log-mel (n_frames, N_MELS).
