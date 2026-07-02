@@ -166,15 +166,30 @@ def _preparar_ejemplo(ruta, training):
     wav      = cargar_audio(ruta)
     wav      = recortar(wav, training)
     logmel   = audio_a_logmel(wav)
-    # (parte 5) aquí irá SpecAugment si training y AUGMENTATION lo pide
+    # SpecAugment: SOLO en train y si la config lo pide (actúa sobre (n_frames, N_MELS))
+    if training and C.AUGMENTATION in ("specaugment", "specaugment_mixup"):
+        logmel = aplicar_specaugment(logmel)
     ventanas = trocear_en_ventanas(logmel)                       # (n_windows, 96, 100, 1)
     mascara  = tf.ones(tf.shape(ventanas)[0], dtype=tf.float32)  # (n_windows,)  todo 1 = reales
     return ventanas, mascara
 
 def construir_dataset(df, clases, training, audio_dir=None):
-    """tf.data.Dataset que entrega ((ventanas, máscara), etiquetas).
-    - train: shuffle + recorte aleatorio (+ augmentation en parte 5).
-    - val/test: determinista, sin augmentation."""
+    """construccion de dataset.
+    Args:
+        df: DataFrame con columnas "fname" y "labels"
+        clases: lista de todas las clases posibles
+        training: bool, True si es dataset de entrenamiento (shuffle + augmentation)
+        audio_dir: Path al directorio de audios (si None, se usa C.DATA_RAW / "train_curated")
+    Returns:        
+        tf.data.Dataset que entrega ((ventanas, máscara), etiquetas multihot)
+    IMPORTANTE: 
+        - Por defecto lee de train_curated. Para datos noisy, pasar
+        audio_dir=C.DATA_RAW / "train_noisy" (y el df correspondiente).
+        - training=True: baraja los ejemplos (distinto cada época) y recorta un
+        tramo ALEATORIO de los audios que superan MAX_AUDIO_SECONDS (los más
+        cortos se dejan enteros y se rellenan con padding).
+        - training=False: determinista (recorte central, sin barajado).
+    """
     audio_dir = Path(audio_dir) if audio_dir else (C.DATA_RAW / "train_curated")
     rutas = [str(audio_dir / f) for f in df["fname"].values]
     Y     = construir_matriz_etiquetas(df, clases)               # (n, 80) float32
@@ -195,6 +210,10 @@ def construir_dataset(df, clases, training, audio_dir=None):
         padded_shapes=(([None, C.N_MELS, C.N_FRAMES, 1], [None]), [C.NUM_CLASSES]),
         padding_values=((0.0, 0.0), 0.0),
     )
+    # mixup: SOLO en train y si la config lo pide (se aplica sobre el batch ya armado)
+    if training and C.AUGMENTATION == "specaugment_mixup":
+        ds = ds.map(lambda inputs, y: mixup_batch(inputs, y),
+                    num_parallel_calls=tf.data.AUTOTUNE)
     return ds.prefetch(tf.data.AUTOTUNE)
 
 # ============================================================
@@ -208,6 +227,7 @@ def aplicar_specaugment(logmel):
     M = C.N_MELS                         # 96 (fijo)
     ancho_t = tf.maximum(1, T // 8)      # ancho máx de banda temporal
     ancho_f = max(1, M // 8)             # ancho máx de banda de frecuencia
+    valor_mask = tf.reduce_mean(logmel)          # <- enmascarar a la media, no a 0
 
     def tapar(x, largo, ancho_max, eje):
         ancho  = tf.random.uniform([], 0, ancho_max + 1, dtype=tf.int32)
@@ -216,7 +236,7 @@ def aplicar_specaugment(logmel):
         fuera  = tf.logical_or(idx < inicio, idx >= inicio + ancho)   # True = conservar
         keep   = tf.cast(fuera, x.dtype)
         keep   = keep[:, None] if eje == 0 else keep[None, :]         # difundir al otro eje
-        return x * keep
+        return x * keep + valor_mask * (1.0 - keep)                   # zona tapada -> media
 
     out = logmel
     for _ in range(C.SPECAUG_TIME_MASKS):
